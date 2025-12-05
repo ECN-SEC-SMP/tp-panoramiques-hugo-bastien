@@ -16,6 +16,7 @@ def parse_command_line_arguments():# Parse command line arguments
     parser.add_argument("-m", "--matching", default="NORM_L1", help="Brute Force norm: NORM_L1, NORM_L2, NORM_HAMMING, NORM_HAMMING2")
     parser.add_argument("-i1", "--image1", default="IMG_1_reduced.jpg", help="path to image1")
     parser.add_argument("-i2", "--image2", default="IMG_2_reduced.jpg", help="path to image2")
+    parser.add_argument("-t", "--threshold", default=3, type=float, help="Ratio threshold for Lowe's ratio test")
     # other argument may need to be added
     return parser
 
@@ -70,7 +71,30 @@ def feature_extractor(type, img, kp):
                 kp, desc = detector.compute(img, kp)
     return desc
 
-# other functions will need to be defined
+def feature_matching(matching, desc1, desc2, threshold):
+    match matching:
+        case "NORM_L1":
+            bf = cv.BFMatcher().create(normType=cv.NORM_L1)
+
+        case "NORM_L2":
+            bf = cv.BFMatcher().create(normType=cv.NORM_L2)
+
+        case "NORM_HAMMING":
+            bf = cv.BFMatcher().create(normType=cv.NORM_HAMMING)
+
+        case "NORM_HAMMING2":
+            bf = cv.BFMatcher().create(normType=cv.NORM_HAMMING2)
+
+    matches = bf.knnMatch(desc1,desc2,k=2)
+
+    good = []
+    for m,n in matches:
+        if m.distance < threshold * n.distance:
+            good.append([m])
+
+    print(good)
+
+    return good
 
 def main():
 
@@ -103,6 +127,7 @@ def main():
     desc1 = feature_extractor(args["kp"], gray1, kp1)
     if img2 is not None: desc2 = feature_extractor(args["kp"], gray2, kp2)
 
+    good = feature_matching(args["matching"], desc1, desc2, args["threshold"])
 
     # code to complete (using functions):
     # - to extract feature and compute descriptor with ORB and SIFT 
