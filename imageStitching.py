@@ -16,8 +16,7 @@ def parse_command_line_arguments():# Parse command line arguments
     parser.add_argument("-m", "--matching", default="NORM_L1", help="Brute Force norm: NORM_L1, NORM_L2, NORM_HAMMING, NORM_HAMMING2")
     parser.add_argument("-i1", "--image1", default="IMG_1_reduced.jpg", help="path to image1")
     parser.add_argument("-i2", "--image2", default="IMG_2_reduced.jpg", help="path to image2")
-    parser.add_argument("-t", "--threshold", default=3, type=float, help="Ratio threshold for Lowe's ratio test")
-    # other argument may need to be added
+    parser.add_argument("-a", "--alpha", default=10, type=float, help="Multiplicative coefficient for distance threshold (alpha * distMin)")
     return parser
 
 def test_load_image(img):
@@ -39,6 +38,10 @@ def load_gray_image(path):
 def display_image(img, image_window_name):
     cv.namedWindow(image_window_name)
     cv.imshow(image_window_name, img)
+
+def display_matching(img1, kp1, img2, kp2, good):
+    img3 = cv.drawMatchesKnn(img1, kp1, img2, kp2, good, None, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    display_image(img3, "Matching")
 
 def feature_detector(type, gray, nb):
     if gray is not None :
@@ -69,9 +72,9 @@ def feature_extractor(type, img, kp):
             case "SIFT":
                 detector = cv.SIFT_create()
                 kp, desc = detector.compute(img, kp)
-    return desc
+    return kp, desc
 
-def feature_matching(matching, desc1, desc2, threshold):
+def feature_matching(matching, desc1, desc2, alpha):
     match matching:
         case "NORM_L1":
             bf = cv.BFMatcher().create(normType=cv.NORM_L1)
@@ -85,15 +88,15 @@ def feature_matching(matching, desc1, desc2, threshold):
         case "NORM_HAMMING2":
             bf = cv.BFMatcher().create(normType=cv.NORM_HAMMING2)
 
-    matches = bf.knnMatch(desc1,desc2,k=2)
-
-    good = []
-    for m,n in matches:
-        if m.distance < threshold * n.distance:
-            good.append([m])
-
-    print(good)
-
+    matches = bf.match(desc1, desc2)
+    
+    if len(matches) > 0:
+        dist_min = min([m.distance for m in matches])
+        threshold = alpha * dist_min
+        good = [[m] for m in matches if m.distance <= threshold]
+    else:
+        good = []
+    
     return good
 
 def main():
@@ -124,10 +127,11 @@ def main():
     display_image(img_kp1, "Image 1 "+args["kp"])
     if img2 is not None : display_image(img_kp2, "Image 2 "+args["kp"])
 
-    desc1 = feature_extractor(args["kp"], gray1, kp1)
-    if img2 is not None: desc2 = feature_extractor(args["kp"], gray2, kp2)
+    kp1, desc1 = feature_extractor(args["kp"], gray1, kp1)
+    if img2 is not None: kp2, desc2 = feature_extractor(args["kp"], gray2, kp2)
 
-    good = feature_matching(args["matching"], desc1, desc2, args["threshold"])
+    good = feature_matching(args["matching"], desc1, desc2, args["alpha"])
+    display_matching(img1, kp1, img2, kp2, good)
 
     # code to complete (using functions):
     # - to extract feature and compute descriptor with ORB and SIFT 
