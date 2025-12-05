@@ -7,14 +7,15 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 ESC_KEY = 27
 Q_KEY = 113
 
+
 def parse_command_line_arguments():# Parse command line arguments
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-k", "--kp", default="SIFT", help="key point (or corner) detector: GFTT ORB SIFT ")
-    parser.add_argument("-n", "--nbKp", default=None, type=int, help="Number of key point required (if configurable) ")
+    parser.add_argument("-k", "--kp", default="GFTT", help="key point (or corner) detector: GFTT ORB SIFT ")
+    parser.add_argument("-n", "--nbKp", default=1000, type=int, help="Number of key point required (if configurable) ")
     parser.add_argument("-d", "--descriptor", default=True, type=bool, help="compute descriptor associated with detector (if available)")
     parser.add_argument("-m", "--matching", default="NORM_L1", help="Brute Force norm: NORM_L1, NORM_L2, NORM_HAMMING, NORM_HAMMING2")
-    parser.add_argument("-i1", "--image1", default="./IMG_1_reduced.jpg", help="path to image1")
-    parser.add_argument("-i2", "--image2", default=None, help="path to image2")
+    parser.add_argument("-i1", "--image1", default="IMG_1_reduced.jpg", help="path to image1")
+    parser.add_argument("-i2", "--image2", default="IMG_2_reduced.jpg", help="path to image2")
     # other argument may need to be added
     return parser
 
@@ -42,14 +43,12 @@ def feature_detector(type, gray, nb):
     if gray is not None :
         match type :
             case "GFTT":
-                 # TODO
-                print("not implemented yet")
-                sys.exit(1)    
+                gftt = cv.GFTTDetector_create(nb)
+                kp = gftt.detect(gray, None)  
             case "ORB":
-                # TODO
-                print("not implemented yet")
-                sys.exit(1)
-            case _:
+                orb = cv.ORB_create(nb)
+                kp = orb.detect(gray, None)
+            case "SIFT":
                 sift = cv.SIFT_create(nb)
                 kp=sift.detect(gray, None)
     else:
@@ -57,9 +56,18 @@ def feature_detector(type, gray, nb):
     return kp
 
 def feature_extractor(type, img, kp):
-    
     desc = None
-    # TODO complete this function calling the compute fonction from each extractor
+    if img is not None and kp is not None:
+        match type:
+            case "GFTT":
+                detector = cv.ORB_create()
+                kp, desc = detector.compute(img, kp)
+            case "ORB":
+                detector = cv.ORB_create()
+                kp, desc = detector.compute(img, kp)
+            case "SIFT":
+                detector = cv.SIFT_create()
+                kp, desc = detector.compute(img, kp)
     return desc
 
 # other functions will need to be defined
@@ -91,6 +99,10 @@ def main():
     
     display_image(img_kp1, "Image 1 "+args["kp"])
     if img2 is not None : display_image(img_kp2, "Image 2 "+args["kp"])
+
+    desc1 = feature_extractor(args["kp"], gray1, kp1)
+    if img2 is not None: desc2 = feature_extractor(args["kp"], gray2, kp2)
+
 
     # code to complete (using functions):
     # - to extract feature and compute descriptor with ORB and SIFT 
